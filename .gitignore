@@ -1,0 +1,13 @@
+# 本地工作记忆（含个人笔记，不进仓库）
+.workbuddy/
+
+# 构建产物，由 build-offline.mjs 生成，不随仓库分发
+发票打印排版处理工具-仙儿-离线版.html
+
+# 系统杂物
+.DS_Store
+._*
+
+# 本项目无 npm 依赖，防御性忽略
+node_modules/
+*.log

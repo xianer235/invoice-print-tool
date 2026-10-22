@@ -1,0 +1,1240 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<meta name="color-scheme" content="light"/>
+<title>发票打印排版处理工具-仙儿</title>
+<!--LIB-HEAD-START-->
+<script src="lib/pdf.min.js"></script>
+<script src="lib/pdf-lib.min.js"></script>
+<!--LIB-HEAD-END-->
+<style>
+  :root{--bg:#f5f5f2;--card:#ffffff;--line:#e3e1da;--txt:#2c2c2a;--sub:#6b6a66;--acc:#185fa5;--accbg:#e6f1fb;--err:#a32d2d;--warn:#8a5a00}
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  @supports(height:100dvh){html,body{height:100dvh}}
+  body{margin:0;font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;background:var(--bg);color:var(--txt);font-size:14px;line-height:1.6;overflow:hidden}
+  .wrap{max-width:1600px;margin:0 auto;padding:14px 16px 16px;height:100%;min-height:0;display:flex;flex-direction:column}
+  .head{flex:none}
+  h1{font-size:19px;font-weight:600;margin:0 0 2px}
+  .ver{font-size:12px;font-weight:400;color:var(--sub);background:var(--accbg);border:1px solid var(--line);border-radius:999px;padding:1px 8px;margin-left:6px;vertical-align:2px}
+  .desc{color:var(--sub);font-size:12.5px;margin:0 0 10px}
+  .grid{flex:1 1 auto;min-height:0;display:grid;grid-template-columns:minmax(300px,.85fr) minmax(320px,.9fr) minmax(440px,1.75fr);gap:14px;align-items:stretch}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px;display:flex;flex-direction:column;min-height:0;overflow:hidden}
+  .card h2{font-size:15px;font-weight:600;margin:0 0 10px;flex:none}
+  .card h2.with-act{display:flex;align-items:center;justify-content:space-between;gap:8px}
+  .btn.mini{padding:2px 8px;font-size:12px;font-weight:400;flex:none}
+  .drop{border:1.5px dashed #c9c7bf;border-radius:10px;padding:16px 14px;text-align:center;color:var(--sub);cursor:pointer;transition:all .15s;flex:none}
+  .drop.over{border-color:var(--acc);background:var(--accbg);color:var(--acc)}
+  .drop .small{font-size:12px;margin-top:4px}
+  .list{margin-top:10px;display:flex;flex-direction:column;gap:8px;flex:1 1 auto;min-height:50px;overflow:auto;overscroll-behavior:contain;scrollbar-gutter:stable}
+  .item{display:flex;align-items:center;gap:10px;border:1px solid var(--line);border-radius:8px;padding:6px 8px;background:#fff;cursor:grab}
+  .item.dragging{opacity:.4}
+  .item.warn{border-color:#e6d3a8;background:#fffdf6}
+  .item img{width:46px;height:46px;object-fit:contain;border:1px solid var(--line);border-radius:4px;background:#fafafa;flex:none}
+  .item .meta{flex:1;min-width:0}
+  .item .name{font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .item .info{font-size:12px;color:var(--sub)}
+  .item.warn .info{color:var(--warn)}
+  .ops{display:flex;gap:4px;flex:none}
+  .btn{border:1px solid var(--line);background:#fff;border-radius:6px;padding:3px 9px;cursor:pointer;font-size:12px;color:var(--txt)}
+  .btn:hover{border-color:var(--acc);color:var(--acc)}
+  .btn.primary{background:var(--acc);border-color:var(--acc);color:#fff;font-size:14px;padding:11px 16px;width:100%;margin-top:0}
+  .btn.primary:disabled{opacity:.5;cursor:default}
+  .row{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:11px 0}
+  .row>label{color:var(--sub);font-size:13px;flex:none}
+  .row .val{color:var(--txt);min-width:0;text-align:right;display:inline-flex;align-items:center;justify-content:flex-end;gap:2px;flex:none}
+  .row .val i{font-style:normal;font-size:12px;color:var(--sub)}
+  input.num{width:40px;flex:none;text-align:right;padding:2px 3px;font-size:13px;border:1px solid var(--line);border-radius:6px;background:#fff;color:var(--txt);font-family:inherit}
+  input.num::-webkit-inner-spin-button,input.num::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
+  input.num{-moz-appearance:textfield}
+  input.num:focus{outline:none;border-color:var(--acc)}
+  select{border:1px solid var(--line);border-radius:6px;padding:4px 6px;font-size:13px;background:#fff;color:var(--txt)}
+  input[type=range]{flex:1;max-width:150px;accent-color:var(--acc)}
+  input[type=checkbox]{width:16px;height:16px;accent-color:var(--acc)}
+  .chips{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end;align-items:center}
+  .chip{border:1px solid var(--line);border-radius:999px;padding:2px 10px;font-size:12px;cursor:pointer;background:#fff;color:var(--sub)}
+  .chip.on{background:var(--accbg);border-color:var(--acc);color:var(--acc)}
+  .chip-prefix{font-size:12px;color:var(--sub);flex:none;white-space:nowrap}
+  .row.off>label{opacity:.55}
+  .row.off input[type=range],.row.off .val{display:none}
+  .off-note{display:none;font-size:12px;color:var(--sub)}
+  .row.off .off-note{display:block}
+  .tip{font-size:12px;color:var(--sub);background:var(--accbg);border-radius:8px;margin-top:12px;line-height:1.7;flex:none}
+  .tip summary{cursor:pointer;padding:8px 10px;font-weight:500;color:var(--acc);list-style:none}
+  .tip summary::-webkit-details-marker{display:none}
+  .tip summary::before{content:"\25B8\00a0"}
+  .tip[open] summary::before{content:"\25BE\00a0"}
+  .tip-body{padding:0 10px 10px}
+  .stat{font-size:12px;color:var(--sub);margin-top:8px;text-align:center}
+  .set-scroll{flex:1 1 auto;min-height:0;overflow:auto;overscroll-behavior:contain;scrollbar-gutter:stable}
+  .gen-footer{flex:none;margin-top:6px;padding-top:10px;border-top:1px solid var(--line)}
+  .foot{flex:none;text-align:center;font-size:12px;color:var(--sub);padding:8px 0 4px;line-height:1.6}
+  .foot a{color:var(--sub);text-decoration:none;border-bottom:1px dotted var(--line)}
+  .foot a:hover{color:var(--acc);border-bottom-color:var(--acc)}
+  .preview-card{margin-top:0}
+  .pv-bar{display:flex;align-items:center;justify-content:space-between;gap:8px 12px;flex-wrap:nowrap;margin:0 0 8px;flex:none}
+  .pv-title{font-size:15px;font-weight:600;display:flex;align-items:center;gap:8px;white-space:nowrap;flex:none}
+  .pv-tools{display:flex;align-items:center;gap:6px;flex-wrap:nowrap;min-width:0;overflow-x:auto;scrollbar-width:none}
+  .pv-tools::-webkit-scrollbar{display:none}
+  .pv-tools>*{flex:none}
+  .pv-group{display:flex;align-items:center;gap:2px;border:1px solid var(--line);border-radius:8px;padding:2px;background:#fff}
+  .pv-group[hidden]{display:none!important}
+  .pv-btn{border:0;background:transparent;min-width:28px;height:26px;border-radius:5px;cursor:pointer;font-size:16px;line-height:1;color:var(--txt);padding:0 5px}
+  .pv-btn:hover{background:var(--accbg);color:var(--acc)}
+  .pv-btn:disabled{opacity:.35;cursor:default;background:transparent;color:var(--txt)}
+  .pv-pct{min-width:52px;text-align:center;font-variant-numeric:tabular-nums;font-size:12px}
+  .pv-pct-wrap{display:inline-flex;align-items:center;gap:1px}
+  .pv-pct-wrap i{font-style:normal;font-size:12px;color:var(--sub)}
+  input.pv-pct-in{width:46px;text-align:right;padding:2px 3px;font-size:12px;border:1px solid var(--line);border-radius:5px;background:#fff;color:var(--txt);font-family:inherit;font-variant-numeric:tabular-nums}
+  input.pv-pct-in::-webkit-inner-spin-button,input.pv-pct-in::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
+  input.pv-pct-in{-moz-appearance:textfield}
+  input.pv-pct-in:focus{outline:none;border-color:var(--acc)}
+  .pv-hint{font-size:12px;color:var(--sub);background:var(--accbg);border-radius:7px;padding:6px 10px;margin:0 0 8px;line-height:1.6;flex:none;visibility:hidden}
+  .pv-hint.show{visibility:visible}
+  .pv-hint b{color:var(--acc);font-weight:600}
+  .preview-body{background:var(--bg);border:1px solid var(--line);border-radius:8px;min-height:120px;display:flex;align-items:stretch;justify-content:center;padding:8px;position:relative;overflow:hidden;flex:1 1 auto}
+  .preview-body .empty{color:var(--sub);font-size:13px;text-align:center;line-height:1.8;padding:20px 0;width:100%;margin:auto}
+  .pv-pages{width:100%;flex:1 1 auto;min-width:0;min-height:0;overflow:auto;display:flex;flex-direction:column;align-items:flex-start;gap:14px;padding:2px;scrollbar-gutter:stable;overscroll-behavior:contain}
+  .pv-page{flex:none;margin-inline:auto;background:#fff;box-shadow:0 1px 6px rgba(0,0,0,.14);line-height:0;border-radius:1px;cursor:zoom-in}
+  .pv-page canvas{display:block}
+  .pv-no{font-size:11px;color:var(--sub);text-align:center;padding:4px 0 0;line-height:1.4}
+  .pg{font-size:12px;color:var(--sub);font-weight:400}
+  .toast{position:fixed;left:50%;bottom:12px;transform:translateX(-50%);background:#2c2c2a;color:#fff;padding:8px 16px;border-radius:8px;font-size:13px;display:none;z-index:50;max-width:80vw}
+  .print-only{display:none}
+
+  /* 两栏：左列上下排「文件 / 设置」，右列预览吃满 */
+  @media (max-width:1180px){
+    .grid{grid-template-columns:minmax(250px,.9fr) minmax(0,1.6fr);grid-template-rows:minmax(0,1fr) minmax(0,1fr)}
+    .grid>.card:nth-child(1){grid-column:1;grid-row:1}
+    .grid>.card:nth-child(2){grid-column:1;grid-row:2}
+    .grid>.card:nth-child(3){grid-column:2;grid-row:1/span 2}
+  }
+  /* 单列：解除高度锁，回到文档流滚动 */
+  @media (max-width:900px){
+    html,body{height:auto}
+    body{overflow:auto}
+    .wrap{height:auto;min-height:100%;display:block}
+    .grid{display:flex;flex-direction:column;gap:12px;flex:none;min-height:0}
+    .grid>.card{overflow:visible}
+    .head .desc{display:block}
+    .list{flex:none;max-height:38vh}
+    .set-scroll{flex:none;overflow:visible}
+    .preview-body{flex:none;height:62vh}
+  }
+  @media (max-height:760px){.head .desc{display:none}}
+
+  @media print{
+    html,body{height:auto!important;overflow:visible!important}
+    .card,.btn,.drop,.toast,.chips,.foot{display:none!important}
+    body{background:#fff;overflow:visible}
+    .wrap{display:block;height:auto;max-width:none;padding:0}
+    .head{display:block;padding:20px 24px 0}
+    .head .desc{display:block}
+    .print-only{display:block;padding:16px 24px 24px;font-size:14px;line-height:2}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="head">
+    <h1>发票打印排版处理工具-仙儿 <span class="ver">v1.8.1</span></h1>
+    <div class="desc">把多张电子发票（PDF / 图片）合排到一张纸上，生成排好版的 PDF 拿去打印。<b>全程在本机浏览器处理，文件不会上传到任何服务器</b>。</div>
+  </header>
+  <div class="print-only">请先点「③ 生成排版 PDF 并下载」，再用 PDF 阅读器打印那个文件；直接打印本网页只会得到界面。</div>
+  <div class="grid">
+    <div class="card">
+      <h2>① 添加发票（可拖动调整顺序）</h2>
+      <div class="drop" id="drop" role="button" tabindex="0">点击选择文件，或把 PDF / 图片拖到这里
+        <div class="small">支持 PDF、JPG、PNG；OFD 格式请先在 12306「已开票」里重新下载为 PDF</div>
+      </div>
+      <input type="file" id="fileInput" multiple accept=".pdf,.png,.jpg,.jpeg" hidden>
+      <div class="list" id="list"></div>
+      <div style="display:flex;gap:8px;margin-top:10px;flex:none">
+        <button class="btn" id="sortName">按文件名排序</button>
+        <button class="btn" id="clearAll">清空</button>
+      </div>
+    </div>
+    <div class="card">
+      <h2 class="with-act"><span>② 排版设置</span><button class="btn mini" id="resetCfg" title="恢复到默认设置">恢复默认</button></h2>
+      <div class="set-scroll">
+        <div class="row"><label>排版模式</label>
+          <div class="chips" id="mode">
+            <span class="chip on" data-v="fit">标准留白</span>
+            <span class="chip" data-v="edge">贴边无白边</span>
+          </div>
+        </div>
+        <div class="row"><label>常用排布</label>
+          <div class="chips" id="preset">
+            <span class="chip-prefix" id="presetPrefix" hidden>每排</span>
+            <span class="chip" data-c="1" data-r="2" data-e="1" data-fit="2张">2张</span>
+            <span class="chip" data-c="2" data-r="2" data-e="2" data-fit="4张">4张</span>
+            <span class="chip on" data-c="2" data-r="3" data-e="3" data-fit="6张">6张</span>
+            <span class="chip" data-c="3" data-r="3" data-e="4" data-fit="9张">9张</span>
+          </div>
+        </div>
+        <div class="row" id="rowGrid"><label id="gridLabel">列数 × 行数</label>
+          <span>
+            <select id="cols"><option>1</option><option>2</option><option>3</option><option>4</option></select>
+            ×
+            <select id="rows"><option>1</option><option>2</option><option selected>3</option><option>4</option></select>
+          </span>
+        </div>
+        <div class="row"><label>纸张</label>
+          <select id="paper">
+            <option value="A4P" selected>A4 竖版</option>
+            <option value="A4L">A4 横版</option>
+            <option value="A5P">A5 竖版</option>
+          </select>
+        </div>
+        <div class="row" id="rowMargin"><label>页边距</label><input type="range" id="margin" min="0" max="30" value="10"><span class="val"><input class="num" id="marginNum" type="number" min="0" max="30" step="1" value="10" inputmode="decimal" title="可直接输入毫米数（0–30）" aria-label="页边距毫米"><i>mm</i></span><span class="off-note" title="贴边无白边模式下发票紧贴纸边，页边距不参与排版；切回「标准留白」即可调整">贴边模式不适用</span></div>
+        <div class="row" id="rowGap"><label>发票间距</label><input type="range" id="gap" min="0" max="20" value="6"><span class="val"><input class="num" id="gapNum" type="number" min="0" max="20" step="1" value="6" inputmode="decimal" title="可直接输入毫米数（0–20）" aria-label="发票间距毫米"><i>mm</i></span><span class="off-note" title="贴边无白边模式下发票互相紧贴，间距不参与排版；切回「标准留白」即可调整">贴边模式不适用</span></div>
+        <div class="row"><label>裁剪虚线</label><input type="checkbox" id="border" checked></div>
+        <div class="row"><label>自动旋转占满格子</label><input type="checkbox" id="autorot" checked></div>
+        <details class="tip">
+          <summary>打印与排版说明</summary>
+          <div class="tip-body">打印时选「实际大小 / 100%」，不要选「适应页面」，尺寸才准。文字小的发票（增值税发票）把张数调少些，火车票 6 张或 9 张都看得清。OFD 无法直接处理，去 12306 重新下载 PDF 版即可。<br>预览为看清整张纸的排布，整页显示时约 0.9 倍，发票正文只有几个像素——<b>点一下预览就能放大核对</b>，打印出来的 PDF 始终是原始清晰度。<br><b>贴边模式</b>：发票紧贴纸边、互相紧贴，每排独立算高度铺满纸宽，只在相邻发票的交界处留裁剪线，裁的时候不用剪白边。请把大小相近的发票排在同一排；若发票 PDF 页面本身自带白边，贴边也无法去掉。</div>
+        </details>
+      </div>
+      <div class="gen-footer">
+        <button class="btn primary" id="gen">③ 生成排版 PDF 并下载</button>
+        <div class="stat" id="stat"></div>
+      </div>
+    </div>
+    <div class="card preview-card">
+      <div class="pv-bar">
+        <div class="pv-title">预览 <span class="pg" id="pvPg">- / -</span></div>
+        <div class="pv-tools">
+          <div class="pv-group" id="pvPager" hidden>
+            <button class="pv-btn" id="pvPrev" title="上一页" aria-label="上一页">‹</button>
+            <span class="pg pv-pct" id="pvIdx">1 / 1</span>
+            <button class="pv-btn" id="pvNext" title="下一页" aria-label="下一页">›</button>
+          </div>
+          <div class="pv-group">
+            <button class="pv-btn" id="pvOut" title="缩小" aria-label="缩小">−</button>
+          <span class="pv-pct-wrap"><input class="pv-pct-in" id="pvPct" type="number" min="10" max="400" step="1" value="100" placeholder="—" inputmode="numeric" title="可直接输入百分比（10–400）" aria-label="预览缩放百分比"><i>%</i></span>
+            <button class="pv-btn" id="pvIn" title="放大" aria-label="放大">+</button>
+          </div>
+          <div class="chips" id="pvZoom">
+            <span class="chip on" data-z="page">整页</span>
+            <span class="chip" data-z="width">适宽</span>
+            <span class="chip" data-z="full">100%</span>
+          </div>
+          <button class="btn" id="pvDl">下载 PDF</button>
+        </div>
+      </div>
+      <div class="pv-hint" id="pvHint"></div>
+      <div class="preview-body" id="pvBody">
+        <div class="pv-pages" id="pvPages">
+          <div class="empty" id="pvEmpty">添加发票后，这里会实时显示排版结果<br>调整任何设置都会自动刷新</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <footer class="foot">开源项目 · <a href="https://github.com/xianer235/invoice-print-tool" target="_blank" rel="noopener noreferrer">github.com/xianer235/invoice-print-tool</a></footer>
+</div>
+<div class="toast" id="toast"></div>
+<!--LIB-WORKER-START--><!--LIB-WORKER-END-->
+<!--LIB-RES-START--><!--LIB-RES-END-->
+<script>
+(function () {
+'use strict';
+
+/* ---------------- 引擎就绪检查 ---------------- */
+function fatal(msg) {
+  var box = document.createElement('div');
+  box.style.cssText = 'max-width:720px;margin:40px auto;padding:18px 20px;border:1px solid #e6c5c5;background:#fdf4f4;color:#a32d2d;border-radius:12px;font-size:14px;line-height:1.9;font-family:-apple-system,"PingFang SC",sans-serif';
+  box.innerHTML = msg;
+  box.style.flex = 'none';
+  const wrap = document.querySelector('.wrap');
+  if (wrap) wrap.insertBefore(box, wrap.firstChild);
+  else document.body.insertBefore(box, document.body.firstChild);
+}
+if (typeof window.pdfjsLib === 'undefined' || typeof window.PDFLib === 'undefined') {
+  fatal('<b>排版引擎没能加载。</b><br>本页是开发版，需要和 <code>lib/</code> 文件夹放在一起；' +
+        '如果你只拷了这一个 HTML 文件，请改用同目录下的 <b>「发票打印排版处理工具-仙儿-离线版.html」</b>，' +
+        '它已经把引擎打包在文件里，不依赖网络也不需要任何附属文件。');
+  return;
+}
+
+/* worker：离线版内联成 blob，开发版走 lib/ 目录 */
+(function setWorker() {
+  var el = document.getElementById('pdfworker');
+  try {
+    if (el && window.URL && URL.createObjectURL) {
+      pdfjsLib.GlobalWorkerOptions.workerSrc = URL.createObjectURL(
+        new Blob([el.textContent], { type: 'application/javascript' })
+      );
+      return;
+    }
+  } catch (e) { /* 落到下面的本地路径 */ }
+  pdfjsLib.GlobalWorkerOptions.workerSrc = 'lib/pdf.worker.min.js';
+})();
+
+/* ---------------- 中文字符映射表（CMap）与标准字体 ----------------
+   这是「预览里只剩图片、一个字都没有」的根因：pdf.js 只内置了 Identity 系列编码，
+   而电子发票普遍用 UniGB-UCS2-H / GBK-EUC-H / GB-EUC-H 这类预定义编码，
+   缺少映射表时字体会整段加载失败，文字被丢弃，只剩表格线和印章。
+   开发版从 lib/ 读；离线版由 build-offline.mjs 把内容内嵌到 window.__OFFLINE_RES__，
+   并用 useWorkerFetch:false 让 worker 把资源请求转回主线程由这里应答。 */
+const OFFLINE_RES = window.__OFFLINE_RES__ || null;
+
+function b64ToBytes(b64) {
+  const bin = atob(b64);
+  const out = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+  return out;
+}
+
+function pdfAssetOptions() {
+  if (!OFFLINE_RES) {
+    // worker 是通过 blob: URL 启动的，相对路径在 worker 里解析不到，必须给绝对地址
+    const abs = p => { try { return new URL(p, location.href).href; } catch (e) { return p; } };
+    return { cMapUrl: abs('lib/cmaps/'), cMapPacked: true, standardFontDataUrl: abs('lib/standard_fonts/') };
+  }
+  const miss = new Set();
+  return {
+    useWorkerFetch: false,
+    cMapPacked: true,
+    // 显式给 null：worker 内部是 `null !== cMapUrl` 判断，留 undefined 会让它在 worker 里
+    // 直接 fetch `undefinedxxx.bcmap`（blob: 源下必然失败），给 null 才会转回主线程
+    cMapUrl: null,
+    standardFontDataUrl: null,
+    CMapReaderFactory: class {
+      constructor() { /* 数据随页面内嵌，无需 baseUrl */ }
+      fetch({ name }) {
+        const d = OFFLINE_RES.cmaps[name];
+        if (!d) { if (!miss.has(name)) { miss.add(name); console.warn('缺少 CMap：' + name); } return Promise.reject(new Error('缺少 CMap: ' + name)); }
+        // worker 认的是 compressionType（CMapCompressionType.BINARY = 1），isCompressed 是旧字段，一起给上
+        return Promise.resolve({ cMapData: b64ToBytes(d), compressionType: 1, isCompressed: true });
+      }
+    },
+    StandardFontDataFactory: class {
+      constructor() { /* 同上 */ }
+      fetch({ filename }) {
+        const d = OFFLINE_RES.fonts[filename];
+        return d ? Promise.resolve(b64ToBytes(d)) : Promise.resolve(null);
+      }
+    },
+  };
+}
+
+const PDF_ASSETS = pdfAssetOptions();
+
+const $ = id => document.getElementById(id);
+const items = [];
+let uid = 0;
+let mode = 'fit';
+let lastPageCount = 0;
+
+function toast(msg, ok = true) {
+  const t = $('toast');
+  t.textContent = msg;
+  t.style.display = 'block';
+  t.style.background = ok ? '#2c2c2a' : 'var(--err)';
+  clearTimeout(t._h);
+  t._h = setTimeout(() => { t.style.display = 'none'; }, ok ? 2800 : 4200);
+}
+
+/* ---------------- 图片方向（EXIF） ---------------- */
+function jpegOrientation(buf) {
+  try {
+    const dv = new DataView(buf);
+    if (dv.byteLength < 4 || dv.getUint16(0) !== 0xFFD8) return 1;
+    let off = 2;
+    while (off + 4 <= dv.byteLength) {
+      if (dv.getUint8(off) !== 0xFF) { off++; continue; }
+      const marker = dv.getUint8(off + 1);
+      if (marker === 0xD8 || marker === 0x01 || (marker >= 0xD0 && marker <= 0xD7)) { off += 2; continue; }
+      if (marker === 0xDA || marker === 0xD9) break;
+      const size = dv.getUint16(off + 2);
+      if (marker === 0xE1 && size >= 8 && off + 12 <= dv.byteLength) {
+        if (dv.getUint32(off + 4) === 0x45786966 && dv.getUint16(off + 8) === 0) {
+          const tiff = off + 10;
+          const little = dv.getUint16(tiff) === 0x4949;
+          const r16 = p => dv.getUint16(p, little);
+          const r32 = p => dv.getUint32(p, little);
+          if (r16(tiff + 2) !== 0x002A) return 1;
+          const ifd = tiff + r32(tiff + 4);
+          if (ifd + 2 > dv.byteLength) return 1;
+          const n = r16(ifd);
+          for (let i = 0; i < n; i++) {
+            const e = ifd + 2 + i * 12;
+            if (e + 12 > dv.byteLength) break;
+            if (r16(e) === 0x0112) {
+              const v = r16(e + 8);
+              return (v >= 1 && v <= 8) ? v : 1;
+            }
+          }
+        }
+      }
+      if (size < 2) break;
+      off += 2 + size;
+    }
+  } catch (e) { /* 解析失败当作正常方向 */ }
+  return 1;
+}
+
+async function reorientJpeg(buf, o) {
+  const bmp = await createImageBitmap(new Blob([buf], { type: 'image/jpeg' }));
+  const w = bmp.width, h = bmp.height;
+  const swap = o >= 5;
+  const c = document.createElement('canvas');
+  c.width = swap ? h : w;
+  c.height = swap ? w : h;
+  const g = c.getContext('2d');
+  g.imageSmoothingQuality = 'high';
+  switch (o) {
+    case 2: g.transform(-1, 0, 0, 1, w, 0); break;
+    case 3: g.transform(-1, 0, 0, -1, w, h); break;
+    case 4: g.transform(1, 0, 0, -1, 0, h); break;
+    case 5: g.transform(0, 1, 1, 0, 0, 0); break;
+    case 6: g.transform(0, 1, -1, 0, h, 0); break;
+    case 7: g.transform(0, -1, -1, 0, h, w); break;
+    case 8: g.transform(0, -1, 1, 0, 0, w); break;
+  }
+  g.drawImage(bmp, 0, 0);
+  if (bmp.close) bmp.close();
+  const blob = await new Promise(res => c.toBlob(res, 'image/jpeg', 0.95));
+  if (!blob) throw new Error('图片转正失败');
+  return blob;
+}
+
+function imageSize(blob) {
+  return new Promise((res, rej) => {
+    const url = URL.createObjectURL(blob);
+    const img = new Image();
+    img.onload = () => { URL.revokeObjectURL(url); res({ w: img.naturalWidth, h: img.naturalHeight }); };
+    img.onerror = () => { URL.revokeObjectURL(url); rej(new Error('图片解码失败')); };
+    img.src = url;
+  });
+}
+
+/* ---------------- 文件准备（缩略图 / 页数 / 校正方向） ---------------- */
+async function prepare(it) {
+  if (it.kind === 'img') {
+    const isPng = it.kind2 === 'png';
+    let blob = it.file;
+    if (!isPng) {
+      const buf = await it.file.arrayBuffer();
+      const o = jpegOrientation(buf);
+      // 只对"手机拍的照片"做方向校正；失败就按原图走，不能让整个文件报废
+      if (o !== 1 && typeof createImageBitmap === 'function') {
+        try { blob = await reorientJpeg(buf, o); }
+        catch (e) { console.warn('方向校正失败，按原图处理', it.name, e); blob = it.file; }
+      }
+      it._buf = await blob.arrayBuffer();
+    } else {
+      it._buf = await it.file.arrayBuffer();
+    }
+    it._blob = blob;
+    it.thumb = URL.createObjectURL(blob);
+    const dim = await imageSize(blob);
+    it.pageCount = 1;
+    it.info = '图片 ' + dim.w + '×' + dim.h;
+    return;
+  }
+  const data = new Uint8Array(await it.file.arrayBuffer());
+  const doc = await pdfjsLib.getDocument({ data }).promise;
+  try {
+    it.pageCount = doc.numPages;
+    const page = await doc.getPage(1);
+    const vp1 = page.getViewport({ scale: 1 });
+    const vp = page.getViewport({ scale: 92 / vp1.width });
+    const c = document.createElement('canvas');
+    c.width = Math.max(1, Math.round(vp.width));
+    c.height = Math.max(1, Math.round(vp.height));
+    await page.render({ canvasContext: c.getContext('2d'), viewport: vp }).promise;
+    it.thumb = c.toDataURL('image/png');
+    it.info = doc.numPages + ' 页';
+  } finally {
+    if (doc.destroy) doc.destroy();
+  }
+}
+
+async function addFiles(fileList) {
+  const added = [], skipped = [];
+  for (const f of fileList) {
+    const ext = (f.name.split('.').pop() || '').toLowerCase();
+    let kind = null, kind2 = null;
+    if (ext === 'pdf') kind = 'pdf';
+    else if (ext === 'png') { kind = 'img'; kind2 = 'png'; }
+    else if (ext === 'jpg' || ext === 'jpeg') { kind = 'img'; kind2 = 'jpg'; }
+    if (!kind) { skipped.push(f.name + '：不支持的格式'); continue; }
+    if (items.some(x => x.name === f.name && x.size === f.size)) { skipped.push(f.name + '：已在列表中'); continue; }
+    const it = { id: ++uid, file: f, name: f.name, size: f.size, kind, kind2 };
+    items.push(it);
+    added.push(it);
+  }
+  if (!added.length) {
+    if (skipped.length) toast(skipped[0] + (skipped.length > 1 ? '（共 ' + skipped.length + ' 个被跳过）' : ''), false);
+    return;
+  }
+  renderList();
+  await Promise.all(added.map(async it => {
+    try {
+      await prepare(it);
+    } catch (e) {
+      it.bad = true;
+      it.info = '解析失败，该文件已被跳过';
+      console.warn(it.name, e);
+    }
+    renderList();
+  }));
+  renderList();
+  $('list').scrollTop = $('list').scrollHeight;
+  const bad = added.filter(x => x.bad).length;
+  if (skipped.length || bad) {
+    const parts = [];
+    if (skipped.length) parts.push('跳过 ' + skipped.length + ' 个（' + skipped[0] + '）');
+    if (bad) parts.push(bad + ' 个解析失败');
+    toast('已添加 ' + (added.length - bad) + ' 个，' + parts.join('，'), false);
+  }
+}
+
+/* ---------------- 列表 ---------------- */
+function updateStat() {
+  const el = $('stat');
+  if (!items.length) { el.textContent = ''; return; }
+  const cols = +$('cols').value, rows = +$('rows').value;
+  let pages = 0, unknown = false;
+  for (const it of items) { if (it.pageCount) pages += it.pageCount; else unknown = true; }
+  const pv = lastPageCount ? ' · 将生成 ' + lastPageCount + ' 页' : '';
+  const head = '已选 ' + items.length + ' 个文件 · 共 ' + (unknown ? '?' : pages) + ' 页 · ';
+  if (mode === 'edge') {
+    el.textContent = head + '贴边：每排最多 ' + cols + ' 张' + pv;
+  } else {
+    el.textContent = head + cols + '×' + rows + ' 排布' + pv;
+  }
+}
+
+function renderList() {
+  const list = $('list');
+  const keepScroll = list.scrollTop;
+  list.innerHTML = '';
+  items.forEach((it, i) => {
+    const div = document.createElement('div');
+    div.className = 'item' + (it.bad ? ' warn' : '');
+    div.draggable = true;
+    const img = document.createElement('img');
+    if (it.thumb) img.src = it.thumb;
+    img.alt = '';
+    const meta = document.createElement('div');
+    meta.className = 'meta';
+    const nameEl = document.createElement('div');
+    nameEl.className = 'name';
+    nameEl.textContent = it.name;
+    nameEl.title = it.name;
+    const infoEl = document.createElement('div');
+    infoEl.className = 'info';
+    infoEl.textContent = it.info || ('第 ' + (i + 1) + ' 位');
+    meta.appendChild(nameEl); meta.appendChild(infoEl);
+
+    const ops = document.createElement('div');
+    ops.className = 'ops';
+    const mk = (txt, fn, title) => {
+      const b = document.createElement('button');
+      b.className = 'btn'; b.textContent = txt; b.title = title; b.setAttribute('aria-label', title);
+      b.onclick = e => { e.stopPropagation(); fn(); };
+      return b;
+    };
+    ops.appendChild(mk('↑', () => { if (i > 0) { [items[i - 1], items[i]] = [items[i], items[i - 1]]; renderList(); } }, '上移'));
+    ops.appendChild(mk('↓', () => { if (i < items.length - 1) { [items[i + 1], items[i]] = [items[i], items[i + 1]]; renderList(); } }, '下移'));
+    ops.appendChild(mk('×', () => {
+      if (it.thumb && it.thumb.startsWith('blob:')) URL.revokeObjectURL(it.thumb);
+      items.splice(i, 1); renderList();
+    }, '移除'));
+    div.appendChild(img); div.appendChild(meta); div.appendChild(ops);
+
+    div.addEventListener('dragstart', e => {
+      div.classList.add('dragging');
+      e.dataTransfer.setData('text/plain', String(i));
+      e.dataTransfer.effectAllowed = 'move';
+    });
+    div.addEventListener('dragend', () => div.classList.remove('dragging'));
+    div.addEventListener('dragover', e => { if (!e.dataTransfer.types.includes('Files')) e.preventDefault(); });
+    div.addEventListener('drop', e => {
+      if (e.dataTransfer.types.includes('Files')) return;
+      e.preventDefault();
+      e.stopPropagation();
+      const from = parseInt(e.dataTransfer.getData('text/plain'), 10);
+      if (isNaN(from) || from === i) return;
+      const moved = items.splice(from, 1)[0];
+      items.splice(i, 0, moved);
+      renderList();
+    });
+    list.appendChild(div);
+  });
+  list.scrollTop = keepScroll;
+  lastPageCount = 0;
+  updateStat();
+  schedulePreview();
+}
+
+/* 只刷新卡片上的文字/告警，不重建列表（避免触发新一轮预览） */
+function refreshInfos() {
+  const nodes = $('list').children;
+  items.forEach((it, i) => {
+    const node = nodes[i];
+    if (!node) return;
+    const el = node.querySelector('.info');
+    if (el) el.textContent = it.info || ('第 ' + (i + 1) + ' 位');
+    node.classList.toggle('warn', !!it.bad);
+  });
+}
+
+$('drop').onclick = () => $('fileInput').click();
+$('drop').onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); $('fileInput').click(); } };
+$('fileInput').onchange = e => { addFiles([...e.target.files]); e.target.value = ''; };
+const dz = $('drop');
+['dragenter', 'dragover'].forEach(ev => dz.addEventListener(ev, e => { e.preventDefault(); dz.classList.add('over'); }));
+['dragleave', 'drop'].forEach(ev => dz.addEventListener(ev, e => { e.preventDefault(); dz.classList.remove('over'); }));
+dz.addEventListener('drop', e => addFiles([...e.dataTransfer.files]));
+
+/* 拖到列表空白处 = 移到末尾 */
+$('list').addEventListener('dragover', e => {
+  if (!e.dataTransfer.types.includes('Files')) { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; }
+});
+$('list').addEventListener('drop', e => {
+  if (e.dataTransfer.types.includes('Files')) return;
+  e.preventDefault();
+  const from = parseInt(e.dataTransfer.getData('text/plain'), 10);
+  if (isNaN(from) || from < 0 || from >= items.length) return;
+  const moved = items.splice(from, 1)[0];
+  items.push(moved);
+  renderList();
+});
+document.addEventListener('dragover', e => e.preventDefault());
+document.addEventListener('drop', e => e.preventDefault());
+
+$('sortName').onclick = () => { items.sort((a, b) => a.name.localeCompare(b.name, 'zh-CN')); renderList(); };
+$('clearAll').onclick = () => {
+  items.forEach(it => { if (it.thumb && it.thumb.startsWith('blob:')) URL.revokeObjectURL(it.thumb); });
+  items.length = 0;
+  lastPageCount = 0;
+  renderList();
+};
+
+/* ---------------- 设置面板联动 ---------------- */
+function syncPreset() {
+  const cols = +$('cols').value, rows = +$('rows').value;
+  let hit = false;
+  document.querySelectorAll('#preset .chip').forEach(ch => {
+    const match = mode === 'edge' ? (+ch.dataset.e === cols) : (+ch.dataset.c === cols && +ch.dataset.r === rows);
+    ch.classList.toggle('on', match && !hit);
+    if (match) hit = true;
+  });
+}
+
+function syncMode() {
+  const edge = mode === 'edge';
+  $('rowMargin').classList.toggle('off', edge);
+  $('rowGap').classList.toggle('off', edge);
+  $('rows').disabled = edge;
+  $('gridLabel').textContent = edge ? '每排张数' : '列数 × 行数';
+  document.querySelectorAll('#mode .chip').forEach(x => x.classList.toggle('on', x.dataset.v === mode));
+  document.querySelectorAll('#preset .chip').forEach(ch => {
+    ch.textContent = edge ? (ch.dataset.e + '张') : ch.dataset.fit;
+  });
+  $('presetPrefix').hidden = !edge;
+  syncPreset();
+}
+
+document.querySelectorAll('#preset .chip').forEach(ch => {
+  ch.onclick = () => {
+    if (mode === 'edge') $('cols').value = ch.dataset.e;
+    else { $('cols').value = ch.dataset.c; $('rows').value = ch.dataset.r; }
+    syncPreset();
+    updateStat();
+    schedulePreview();
+  };
+});
+$('cols').onchange = () => { syncPreset(); updateStat(); schedulePreview(); };
+$('rows').onchange = () => { syncPreset(); updateStat(); schedulePreview(); };
+/* 滑块 + 数字输入框双向联动：滑块是唯一数据源，输入框只负责把值写回滑块 */
+function bindNum(rangeEl, numEl, min, max) {
+  const apply = () => {
+    const raw = parseFloat(numEl.value);
+    if (!isFinite(raw)) { numEl.value = rangeEl.value; return; }
+    const v = Math.min(max, Math.max(min, Math.round(raw)));
+    rangeEl.value = v;            // 滑块自己按 step 吸附、夹取
+    numEl.value = rangeEl.value;  // 回读，保证显示值和真实值一致
+    schedulePreview();
+  };
+  rangeEl.addEventListener('input', () => { numEl.value = rangeEl.value; });
+  numEl.addEventListener('change', apply);
+  numEl.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); numEl.blur(); } });
+  numEl.addEventListener('wheel', () => numEl.blur(), { passive: true });
+  numEl.value = rangeEl.value;
+}
+bindNum($('margin'), $('marginNum'), 0, 30);
+bindNum($('gap'), $('gapNum'), 0, 20);
+
+document.querySelectorAll('#mode .chip').forEach(ch => {
+  ch.onclick = () => {
+    document.querySelectorAll('#mode .chip').forEach(x => x.classList.remove('on'));
+    ch.classList.add('on');
+    mode = ch.dataset.v;
+    syncMode();
+    updateStat();
+    schedulePreview();
+  };
+});
+
+/* ---------------- 排版 ---------------- */
+const PAPERS = {
+  A4P: [595.28, 841.89],
+  A4L: [841.89, 595.28],
+  A5P: [419.53, 595.28],
+};
+
+const DASH_COLOR = () => PDFLib.rgb(0.45, 0.45, 0.45);
+
+/* 贴边：每排独立算高度铺满纸宽；末排不足按同排平均宽高比补齐，避免单张被拉满整页 */
+function addEdgePages(out, all, opts) {
+  const { pw, ph, perRow, wantBorder, autorot } = opts;
+  const list = all.map(p => {
+    const rot = !!(autorot && p.w < p.h);
+    return { ep: p.ep, img: p.img, rot, aspect: rot ? p.h / p.w : p.w / p.h };
+  });
+  if (!list.length) return;
+
+  const rowHeight = arr => {
+    let sum = arr.reduce((s, p) => s + p.aspect, 0);
+    if (arr.length < perRow) sum += (perRow - arr.length) * (sum / arr.length);
+    return pw / sum;
+  };
+
+  const rows = [];
+  for (let i = 0; i < list.length; i += perRow) rows.push(list.slice(i, i + perRow));
+
+  const pages = [];
+  let cur = [], used = 0;
+  for (const r of rows) {
+    const h = Math.min(rowHeight(r), ph);
+    if (used > 0 && used + h > ph + 0.5) { pages.push(cur); cur = []; used = 0; }
+    cur.push({ items: r, h });
+    used += h;
+  }
+  if (cur.length) pages.push(cur);
+
+  for (const pageRows of pages) {
+    const page = out.addPage([pw, ph]);
+    page.drawRectangle({ x: 0, y: 0, width: pw, height: ph, color: PDFLib.rgb(1, 1, 1) });
+    let yTop = ph;
+    for (let ri = 0; ri < pageRows.length; ri++) {
+      const row = pageRows[ri];
+      const h = row.h;
+      const yBottom = yTop - h;
+      let x = 0;
+      const cuts = [];
+      for (const p of row.items) {
+        const w = p.aspect * h;
+        if (p.ep) {
+          if (p.rot) page.drawPage(p.ep, { x: x + w, y: yBottom, width: h, height: w, rotate: PDFLib.degrees(90) });
+          else page.drawPage(p.ep, { x, y: yBottom, width: w, height: h });
+        } else {
+          if (p.rot) page.drawImage(p.img, { x: x + w, y: yBottom, width: h, height: w, rotate: PDFLib.degrees(90) });
+          else page.drawImage(p.img, { x, y: yBottom, width: w, height: h });
+        }
+        if (x > 0) cuts.push(x);
+        x += w;
+      }
+      if (wantBorder) {
+        for (const cx of cuts) {
+          page.drawLine({
+            start: { x: cx, y: yBottom }, end: { x: cx, y: yTop },
+            thickness: 0.6, color: DASH_COLOR(), dashArray: [4, 4], opacity: 0.8,
+          });
+        }
+        if (ri < pageRows.length - 1) {
+          page.drawLine({
+            start: { x: 0, y: yBottom }, end: { x: pw, y: yBottom },
+            thickness: 0.6, color: DASH_COLOR(), dashArray: [4, 4], opacity: 0.8,
+          });
+        }
+      }
+      yTop = yBottom;
+    }
+  }
+}
+
+async function buildPdf() {
+  const out = await PDFLib.PDFDocument.create();
+  const all = [];
+  let failed = 0;
+  for (const it of items) {
+    try {
+      if (it.kind === 'pdf') {
+        if (!it._src) {
+          const buf = await it.file.arrayBuffer();
+          it._src = await PDFLib.PDFDocument.load(buf, { ignoreEncryption: true });
+          if (it._src.isEncrypted) {
+            it.bad = true;
+            it.info = (it.pageCount || '?') + ' 页 · 已加密，排版可能是空白';
+          }
+        }
+        const eps = await out.embedPdf(it._src, it._src.getPageIndices());
+        for (const ep of eps) all.push({ ep, w: ep.width, h: ep.height });
+        if (!it.pageCount) { it.pageCount = eps.length; it.info = eps.length + ' 页'; }
+      } else {
+        const u8 = new Uint8Array(it._buf);
+        const img = it.kind2 === 'png' ? await out.embedPng(u8) : await out.embedJpg(u8);
+        all.push({ img, w: img.width * 0.75, h: img.height * 0.75 });
+      }
+    } catch (e) {
+      failed++;
+      console.warn(it.name, e);
+      it.bad = true;
+      it.info = '无法读取，已跳过';
+    }
+  }
+  if (!all.length) throw new Error('没有可用的发票页面' + (failed ? '（' + failed + ' 个文件读取失败）' : ''));
+
+  const [pw, ph] = PAPERS[$('paper').value] || PAPERS.A4P;
+  const MM = 72 / 25.4;
+  const m = +$('margin').value * MM;
+  const g = +$('gap').value * MM;
+  // 兜底：cols 若为 0，下面的 for 步长会变成 0 → 死循环
+  const cols = Math.max(1, +$('cols').value), rows = Math.max(1, +$('rows').value);
+  const cw = Math.max(1, (pw - 2 * m - (cols - 1) * g) / cols);
+  const ch = Math.max(1, (ph - 2 * m - (rows - 1) * g) / rows);
+  const per = cols * rows;
+  const wantBorder = $('border').checked;
+  const autorot = $('autorot').checked;
+
+  if (mode === 'edge') {
+    addEdgePages(out, all, { pw, ph, perRow: cols, wantBorder, autorot });
+  } else {
+    for (let i = 0; i < all.length; i += per) {
+      const page = out.addPage([pw, ph]);
+      page.drawRectangle({ x: 0, y: 0, width: pw, height: ph, color: PDFLib.rgb(1, 1, 1) });
+      for (let j = 0; j < per && i + j < all.length; j++) {
+        const p = all[i + j];
+        const col = j % cols, row = Math.floor(j / cols);
+        const cellX = m + col * (cw + g);
+        const cellY = ph - m - (row + 1) * ch - row * g;
+
+        const sFit = Math.min(cw / p.w, ch / p.h);
+        const sRot = Math.min(cw / p.h, ch / p.w);
+        const useRot = autorot && sRot > sFit;
+        const s = useRot ? sRot : sFit;
+        const w = p.w * s, h = p.h * s;
+        let x, y;
+        if (useRot) {
+          x = cellX + (cw + h) / 2;
+          y = cellY + (ch - w) / 2;
+        } else {
+          x = cellX + (cw - w) / 2;
+          y = cellY + (ch - h) / 2;
+        }
+        const drawOpts = { x, y, width: w, height: h };
+        if (useRot) drawOpts.rotate = PDFLib.degrees(90);
+        if (p.ep) page.drawPage(p.ep, drawOpts);
+        else page.drawImage(p.img, drawOpts);
+        if (wantBorder) {
+          page.drawRectangle({
+            x: cellX, y: cellY, width: cw, height: ch,
+            borderColor: DASH_COLOR(), borderWidth: 0.6,
+            borderDashArray: [4, 4], borderOpacity: 0.8,
+          });
+        }
+      }
+    }
+  }
+
+  const bytes = await out.save();
+  return { bytes, pageCount: out.getPageCount() };
+}
+
+/* ---------------- 生成下载 ---------------- */
+$('gen').onclick = async () => {
+  if (!items.length) { toast('请先添加发票文件', false); return; }
+  const btn = $('gen');
+  btn.disabled = true; btn.textContent = '处理中…';
+  try {
+    const { bytes, pageCount } = await buildPdf();
+    const blob = new Blob([bytes], { type: 'application/pdf' });
+    const d = new Date();
+    const ts = d.getFullYear() + String(d.getMonth() + 1).padStart(2, '0') + String(d.getDate()).padStart(2, '0') +
+      '-' + String(d.getHours()).padStart(2, '0') + String(d.getMinutes()).padStart(2, '0');
+    const layout = mode === 'edge'
+      ? '贴边_每排' + (+$('cols').value) + '张'
+      : (+$('cols').value) + 'x' + (+$('rows').value);
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = '发票打印排版_' + layout + '_' + ts + '.pdf';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+    lastPageCount = pageCount;
+    refreshInfos();
+    updateStat();
+    toast('已生成 ' + pageCount + ' 页排版 PDF，开始下载');
+  } catch (e) {
+    console.error(e);
+    toast('生成失败：' + ((e && e.message) || '未知错误'), false);
+  }
+  btn.disabled = false;
+  btn.textContent = '③ 生成排版 PDF 并下载';
+};
+
+/* ---------------- 预览：自己用 pdf.js 画到 canvas，才能控制「整页」缩放 ---------------- */
+const PV_EMPTY = '<div class="empty">添加发票后，这里会实时显示排版结果<br>调整任何设置都会自动刷新</div>';
+const PV_MAX_PAGES = 12;
+const PV_MIN_SCALE = 0.1, PV_MAX_SCALE = 4;
+const pvState = {
+  doc: null, token: 0, timer: 0, rt: 0, st: 0,
+  busy: false, pending: false,
+  mode: 'page',   // page = 整页可见；width = 适应宽度；full = 100%；custom = 手动比例
+  manual: false,  // manual 恒等于 (mode === 'custom')，表示用户自己定了比例，不再自动适配
+  scale: 1,
+  page: 1,
+};
+
+function pvClear() {
+  if (pvState.doc) { try { pvState.doc.destroy(); } catch (e) { /* 已销毁 */ } pvState.doc = null; }
+  $('pvPages').innerHTML = PV_EMPTY;
+  $('pvPg').textContent = '- / -';
+  $('pvPct').value = '';
+  $('pvPager').hidden = true;
+  $('pvHint').classList.remove('show');
+  pvState.manual = (pvState.mode === 'custom');
+  pvState.page = 1;
+}
+
+function pvBox(count) {
+  const host = $('pvPages');
+  const fallback = ($('pvBody').clientWidth || 744) - 26;
+  const w = Math.max(200, (host.clientWidth || fallback) - 10);
+  // 单页时没有页码标签，可以把整页放得更大一些
+  const tagH = count > 1 ? 26 : 0;
+  const h = Math.max(120, (host.clientHeight || 400) - tagH - 6);
+  return { w, h };
+}
+
+function pvSyncPager(count) {
+  $('pvIdx').textContent = pvState.page + ' / ' + count;
+  $('pvPrev').disabled = pvState.page <= 1;
+  $('pvNext').disabled = pvState.page >= count;
+}
+
+function pvGoPage(n) {
+  const host = $('pvPages');
+  const pages = host.querySelectorAll('.pv-page');
+  if (!pages.length) return;
+  const total = pages.length;
+  const idx = Math.max(1, Math.min(total, n));
+  pvState.page = idx;
+  pvSyncPager(total);
+  const hostTop = host.getBoundingClientRect().top;
+  const targetTop = pages[idx - 1].getBoundingClientRect().top;
+  host.scrollTo({ top: host.scrollTop + targetTop - hostTop - 2, behavior: 'smooth' });
+}
+
+function pvApplyScale(scale) {
+  pvState.mode = 'custom';
+  pvState.manual = true;
+  // 吸附到 1% 精度，保证输入框显示的数字和内部真正用的比例一致
+  pvState.scale = Math.min(PV_MAX_SCALE, Math.max(PV_MIN_SCALE, Math.round(scale * 100) / 100));
+  document.querySelectorAll('#pvZoom .chip').forEach(x => x.classList.remove('on'));
+  cfgSaveSoon();
+  if (pvState.doc && !pvState.busy) pvPaint(++pvState.token).catch(e => console.warn(e));
+}
+
+async function pvPaint(token) {
+  const doc = pvState.doc;
+  if (!doc) return;
+  const host = $('pvPages');
+  // 首次绘制时 flex 布局可能还没定高，先等一帧再量，否则会按兜底值缩放
+  if (host.clientHeight < 80) {
+    await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+    if (token !== pvState.token) return;
+  }
+  host.innerHTML = '';
+  const total = doc.numPages;
+  const count = Math.min(total, PV_MAX_PAGES);
+  const box = pvBox(count);
+
+  const first = await doc.getPage(1);
+  const b0 = first.getViewport({ scale: 1 });
+  if (!pvState.manual) {
+    pvState.scale = pvState.mode === 'page'
+      ? Math.min(box.w / b0.width, box.h / b0.height)
+      : pvState.mode === 'width' ? box.w / b0.width
+      : pvState.mode === 'full' ? 1
+      : pvState.scale;   // 未知状态就保持当前比例，绝不突然跳到 100%
+  }
+  const scale = Math.max(PV_MIN_SCALE, pvState.scale);
+
+  // 渲染分辨率跟屏幕像素比走，但封顶，免得一次画十几页把内存吃满
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  const renderScale = Math.min(Math.max(scale, 1) * dpr, 4);
+
+  // 整页模式下多张票排一张纸，正文可能只有几像素——说清楚，别让人以为没渲染出来
+  const tiny = pvState.mode === 'page' && scale < 0.95 && !pvState.manual;
+  $('pvHint').classList.toggle('show', tiny);
+  if (tiny) {
+    $('pvHint').innerHTML = '整页能看清整张纸的排布，但一张纸上排了多张发票时，正文只有几个像素，看不清是正常的。' +
+      '<b>点一下预览</b>（或选「适宽」）就能放大核对内容——打印出来的 PDF 不受影响，仍是原始清晰度。';
+  }
+
+  for (let n = 1; n <= count; n++) {
+    if (token !== pvState.token) return;
+    const page = await doc.getPage(n);
+    const pb = page.getViewport({ scale: 1 });
+    const vp = page.getViewport({ scale: renderScale });
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.max(1, Math.round(vp.width));
+    canvas.height = Math.max(1, Math.round(vp.height));
+    canvas.style.width = Math.round(pb.width * scale) + 'px';
+    canvas.style.height = Math.round(pb.height * scale) + 'px';
+    await page.render({ canvasContext: canvas.getContext('2d'), viewport: vp }).promise;
+    if (token !== pvState.token) return;
+    const wrap = document.createElement('div');
+    wrap.className = 'pv-page';
+    wrap.appendChild(canvas);
+    if (count > 1) {
+      const tag = document.createElement('div');
+      tag.className = 'pv-no';
+      tag.textContent = '第 ' + n + ' / ' + total + ' 页';
+      wrap.appendChild(tag);
+    }
+    host.appendChild(wrap);
+  }
+
+  $('pvPg').textContent = '共 ' + total + ' 页 · 与下载结果一致' +
+    (total > count ? '（预览前 ' + count + ' 页）' : '');
+  if (document.activeElement !== $('pvPct')) $('pvPct').value = Math.round(scale * 100);
+  $('pvPager').hidden = count <= 1;
+  pvState.page = Math.min(pvState.page || 1, count);
+  pvSyncPager(count);
+}
+
+async function renderPreview() {
+  if (!items.length) { pvClear(); return; }
+  if (pvState.busy) { pvState.pending = true; return; }
+  pvState.busy = true;
+  const token = ++pvState.token;
+  try {
+    const { bytes, pageCount } = await buildPdf();
+    if (token !== pvState.token) { pvState.busy = false; return; }
+    const doc = await pdfjsLib.getDocument(Object.assign({ data: new Uint8Array(bytes) }, PDF_ASSETS)).promise;
+    if (token !== pvState.token) { try { doc.destroy(); } catch (e) { /* 忽略 */ } pvState.busy = false; return; }
+    if (pvState.doc) { try { pvState.doc.destroy(); } catch (e) { /* 忽略 */ } }
+    pvState.doc = doc;
+    lastPageCount = pageCount;
+    await pvPaint(token);
+    refreshInfos();
+    updateStat();
+  } catch (e) {
+    console.warn(e);
+  }
+  pvState.busy = false;
+  if (pvState.pending) { pvState.pending = false; schedulePreview(); }
+}
+
+function schedulePreview() {
+  cfgSaveSoon();
+  clearTimeout(pvState.timer);
+  pvState.timer = setTimeout(renderPreview, 350);
+}
+
+function pvSetMode(z) {
+  pvState.mode = z;
+  pvState.manual = false;   // 三个预设模式都自动适配；自定义比例走 pvApplyScale
+  document.querySelectorAll('#pvZoom .chip').forEach(x => x.classList.toggle('on', x.dataset.z === z));
+  cfgSaveSoon();
+  if (pvState.doc && !pvState.busy) return pvPaint(++pvState.token).catch(e => console.warn(e));
+  return Promise.resolve();
+}
+
+document.querySelectorAll('#pvZoom .chip').forEach(ch => {
+  ch.onclick = () => pvSetMode(ch.dataset.z);
+});
+
+/* 点一下发票 → 在「整页」和「适宽」之间切换，放大到能看清内容 */
+$('pvPages').addEventListener('click', e => {
+  const pageEl = e.target.closest ? e.target.closest('.pv-page') : null;
+  if (!pageEl || !pvState.doc || pvState.busy) return;
+  const idx = [...$('pvPages').querySelectorAll('.pv-page')].indexOf(pageEl) + 1;
+  pvSetMode((pvState.mode === 'page' || pvState.mode === 'custom') ? 'width' : 'page').then(() => pvGoPage(idx));
+});
+
+$('pvIn').onclick = () => pvApplyScale(pvState.scale * 1.25);
+$('pvOut').onclick = () => pvApplyScale(pvState.scale / 1.25);
+$('pvPrev').onclick = () => pvGoPage(pvState.page - 1);
+$('pvNext').onclick = () => pvGoPage(pvState.page + 1);
+$('pvDl').onclick = () => $('gen').click();
+
+/* 百分比可以直接输入。只接 change（回车/失焦），不接 input：
+   一次改缩放要重画最多 12 张 canvas，逐字符触发会卡，也会把输入中的数字夹断 */
+$('pvPct').addEventListener('change', () => {
+  const raw = parseFloat($('pvPct').value);
+  if (!isFinite(raw)) { $('pvPct').value = Math.round(pvState.scale * 100); return; }
+  const pct = Math.min(PV_MAX_SCALE * 100, Math.max(PV_MIN_SCALE * 100, Math.round(raw)));
+  $('pvPct').value = pct;
+  pvApplyScale(pct / 100);
+});
+$('pvPct').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); $('pvPct').blur(); } });
+$('pvPct').addEventListener('wheel', () => $('pvPct').blur(), { passive: true });
+
+/* 手动滚动时页码跟着走 */
+$('pvPages').addEventListener('scroll', () => {
+  clearTimeout(pvState.st);
+  pvState.st = setTimeout(() => {
+    const host = $('pvPages');
+    const pages = host.querySelectorAll('.pv-page');
+    if (pages.length < 2) return;
+    const hostTop = host.getBoundingClientRect().top;
+    let idx = 1;
+    pages.forEach((p, i) => {
+      if (p.getBoundingClientRect().top - hostTop <= host.clientHeight * 0.5) idx = i + 1;
+    });
+    if (idx !== pvState.page) { pvState.page = idx; pvSyncPager(pages.length); }
+  }, 120);
+}, { passive: true });
+
+function repaintSoon() {
+  clearTimeout(pvState.rt);
+  pvState.rt = setTimeout(() => {
+    if (pvState.doc && !pvState.busy) pvPaint(++pvState.token).catch(e => console.warn(e));
+  }, 240);
+}
+
+window.addEventListener('resize', repaintSoon);
+
+/* 预览区自己变大变小（工具栏换行、页码组出现、窗口缩放）不会触发 window.resize，
+   用 ResizeObserver 兜住，否则「整页」会一直按旧高度画 */
+if (window.ResizeObserver) {
+  let roW = 0, roH = 0;
+  new ResizeObserver(entries => {
+    const r = entries[0].contentRect;
+    if (Math.abs(r.width - roW) < 2 && Math.abs(r.height - roH) < 2) return;
+    roW = r.width; roH = r.height;
+    repaintSoon();
+  }).observe($('pvBody'));
+}
+
+['margin', 'gap', 'border', 'autorot', 'paper'].forEach(id => {
+  ['input', 'change'].forEach(ev => $(id).addEventListener(ev, schedulePreview));
+});
+$('cols').addEventListener('input', schedulePreview);
+$('rows').addEventListener('input', schedulePreview);
+
+/* ---------------- 设置记忆：存在浏览器本地，不写进网页文件 ---------------- */
+const CFG_KEY = 'xianer.invoiceLayout.v1';
+let restoring = false;      // 恢复设置期间不许回写，否则会把恢复过程当成用户操作
+let cfgTimer = 0;
+let storageOk = true;       // Safari / 禁用存储时降级为「不记忆」，功能照常用
+
+/* 逐字段校验，关键值不合法就整份丢弃。宁可回默认，也不能让坏值进排版：
+   cols=0 会让 buildPdf 的 for 步长变成 0，标签页直接卡死且重开还卡死 */
+function sanitize(o) {
+  if (!o || o.v !== 1) return null;
+  const int = (v, lo, hi) => {
+    const n = parseInt(v, 10);
+    return isFinite(n) ? Math.min(hi, Math.max(lo, n)) : null;
+  };
+  const cols = int(o.cols, 1, 4), rows = int(o.rows, 1, 4);
+  const margin = int(o.margin, 0, 30), gap = int(o.gap, 0, 20);
+  if (cols === null || rows === null || margin === null || gap === null) return null;
+  if (o.mode !== 'fit' && o.mode !== 'edge') return null;
+  if (!PAPERS[o.paper]) return null;
+  const z = o.zoom && o.zoom.z;
+  const zoom = (z === 'page' || z === 'width' || z === 'full' || z === 'custom')
+    ? { z, s: Math.min(PV_MAX_SCALE, Math.max(PV_MIN_SCALE, +o.zoom.s || 1)) }
+    : { z: 'page', s: 1 };
+  return { v: 1, mode: o.mode, cols, rows, paper: o.paper, margin, gap,
+    border: o.border !== false, autorot: o.autorot !== false, zoom };
+}
+
+function cfgLoad() {
+  if (!storageOk) return null;
+  try {
+    // 属性访问也包在 try 里：Safari 打开本地文件时可能在取 localStorage 这一步就抛 SecurityError
+    const raw = window.localStorage.getItem(CFG_KEY);
+    if (!raw) return null;
+    return sanitize(JSON.parse(raw));
+  } catch (e) { storageOk = false; return null; }
+}
+
+function cfgSaveNow() {
+  if (restoring || !storageOk) return;
+  const data = {
+    v: 1, mode, cols: +$('cols').value, rows: +$('rows').value,
+    paper: $('paper').value, margin: +$('margin').value, gap: +$('gap').value,
+    border: $('border').checked, autorot: $('autorot').checked,
+    zoom: { z: pvState.mode, s: Math.round(pvState.scale * 100) / 100 },
+  };
+  try { window.localStorage.setItem(CFG_KEY, JSON.stringify(data)); }
+  catch (e) { storageOk = false; }
+}
+
+/* 挂在 schedulePreview / pvSetMode / pvApplyScale 上，不用监听 change：
+   「常用排布」chip 是程序化 .value= 赋值，不派发事件，监听会漏存 */
+function cfgSaveSoon() {
+  if (restoring || !storageOk) return;
+  clearTimeout(cfgTimer);
+  cfgTimer = setTimeout(cfgSaveNow, 300);
+}
+
+window.addEventListener('pagehide', cfgSaveNow);
+
+function applyCfg(cfg) {
+  if (!cfg) return;
+  mode = cfg.mode;
+  $('cols').value = cfg.cols;
+  $('rows').value = cfg.rows;
+  $('paper').value = cfg.paper;
+  $('margin').value = cfg.margin; $('marginNum').value = cfg.margin;
+  $('gap').value = cfg.gap; $('gapNum').value = cfg.gap;
+  $('border').checked = cfg.border;
+  $('autorot').checked = cfg.autorot;
+}
+
+function applyCfgZoom(cfg) {
+  if (!cfg) return;
+  const z = cfg.zoom || { z: 'page', s: 1 };
+  if (z.z === 'custom') {
+    pvApplyScale(z.s);
+    $('pvPct').value = Math.round(pvState.scale * 100);
+  } else {
+    pvSetMode(z.z);
+  }
+}
+
+$('resetCfg').onclick = () => {
+  restoring = true;
+  mode = 'fit';
+  $('cols').value = 2;
+  $('rows').value = 3;
+  $('paper').value = 'A4P';
+  $('margin').value = 10; $('marginNum').value = 10;
+  $('gap').value = 6; $('gapNum').value = 6;
+  $('border').checked = true;
+  $('autorot').checked = true;
+  syncMode();
+  updateStat();
+  restoring = false;
+  pvSetMode('page');
+  schedulePreview();
+  cfgSaveNow();
+  toast('已恢复默认设置');
+};
+
+/* ---------------- 启动：先恢复设置，再同步 UI，最后恢复缩放 ---------------- */
+const CFG = cfgLoad();
+restoring = true;
+applyCfg(CFG);       // 1. 先写 DOM 数值（不触发事件）
+syncMode();          // 2. 依赖 mode / cols / rows 的界面状态
+updateStat();        // 3.
+pvClear();           // 4. 会重置预览状态，所以缩放必须放到它后面
+applyCfgZoom(CFG);   // 5.
+restoring = false;
+})();
+</script>
+</body>
+</html>
