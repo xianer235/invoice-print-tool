@@ -4,6 +4,9 @@
 全部处理都在本机浏览器里完成，文件不会上传到任何服务器，断网也能用。
 当前版本 v1.8.1。
 
+> **只想用、不想折腾**：到 [Releases 页面](https://github.com/xianer235/invoice-print-tool/releases/latest)
+> 下载 `invoice-print-tool-offline-v1.8.1.html`，保存到本地用浏览器打开即用——无需安装、无需联网，也可以随意拷贝分享。
+
 ## 功能
 
 - 支持 PDF、JPG、PNG；自动识别手机照片的 EXIF 方向并转正
@@ -18,19 +21,23 @@
 
 ## 使用方法
 
-### 方式一：离线版（日常使用，推荐）
+### 普通用户：下载即用
 
-先用构建脚本生成单文件离线版（约 3.9 MB，已把排版引擎、中文字符映射表、标准字体全部打进一个 HTML 文件）：
+到 [Releases 页面](https://github.com/xianer235/invoice-print-tool/releases/latest) 下载
+`invoice-print-tool-offline-v1.8.1.html`（约 3.9 MB），保存到本地，用浏览器打开即可。
+单文件应用：排版引擎、中文字符映射表、标准字体全部内嵌在文件里，**无需安装、无需联网**。
+下载后可随意重命名，不影响使用。需要较新版本的 Chrome / Edge / Safari / Firefox。
+
+### 开发者
 
 ```bash
-node build-offline.mjs
+git clone https://github.com/xianer235/invoice-print-tool.git
+cd invoice-print-tool
+node build-offline.mjs        # 生成单文件离线版，双击即用
 ```
 
-生成 `发票打印排版处理工具-仙儿-离线版.html`，双击用浏览器打开即可。不依赖网络，也不需要和任何文件夹放在一起，可以随便拷贝。
-
-### 方式二：开发版（改代码时用）
-
-`发票打印排版处理工具-仙儿.html` 是开发版，需要和 `lib/` 文件夹放在一起，并通过本地 HTTP 服务打开——不要直接双击 file:// 打开，浏览器会拦截 file:// 下的 worker 脚本：
+改代码时用开发版 `发票打印排版处理工具-仙儿.html`：它需要和 `lib/` 文件夹放在一起，
+并通过本地 HTTP 服务打开——不要直接双击 file:// 打开，浏览器会拦截 file:// 下的 worker 脚本：
 
 ```bash
 # 在项目目录下任选一个：
@@ -68,7 +75,8 @@ npx serve .
 └── README.md
 ```
 
-构建产物 `发票打印排版处理工具-仙儿-离线版.html` 已被 `.gitignore` 排除，不随仓库分发。
+构建产物 `发票打印排版处理工具-仙儿-离线版.html` 已被 `.gitignore` 排除，不随仓库分发；
+已构建好的版本在 [Releases 页面](https://github.com/xianer235/invoice-print-tool/releases/latest) 直接下载。
 
 ## 已知限制
 
